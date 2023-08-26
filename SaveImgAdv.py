@@ -1,36 +1,44 @@
 import numpy as np
 from PIL import Image
+import piexif
+import piexif.helper
+from . import helper
 import folder_paths
 import os
 import json
 
-# by Kaharos94
-# https://github.com/Kaharos94/ComfyUI-Saveaswebp
-# comfyUI node to save an image in webp format
+# by Kaharos94 and jkrauss82
+# forked from Kaharos94 / https://github.com/Kaharos94/ComfyUI-Saveaswebp
+# comfyUI node to save an image in webp and jpeg formats
 
-class Save_as_webp:
+class SaveImgAdv:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
         self.type = "output"
 
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": 
-                    {"images": ("IMAGE", ),
-                    "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                    "mode":(["lossy","lossless"],),
-                    "compression":("INT", {"default": 80, "min": 1, "max": 100, "step": 1},)},
-                "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
-                }
+        return {
+            "required": {
+                "images": ("IMAGE", ),
+                "filename_prefix": ("STRING", {"default": "ComfyUI"}),
+                "mode":(["lossy","lossless"],),
+                "format":([ "jpg", "webp" ], { "default": "webp" }),
+                "compression":("INT", {"default": 80, "min": 1, "max": 100, "step": 1},)
+            },
+            "hidden": {
+                "prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"
+            }
+        }
 
     RETURN_TYPES = ()
-    FUNCTION = "Save_as_webp"
+    FUNCTION = "Save_as_format"
 
     OUTPUT_NODE = True
 
     CATEGORY = "image"
 
-    def Save_as_webp(self, mode , compression, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None , ):
+    def Save_as_format(self, mode, format, compression, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, ):
         def map_filename(filename):
             prefix_len = len(os.path.basename(filename_prefix))
             prefix = filename[:prefix_len + 1]
@@ -70,24 +78,37 @@ class Save_as_webp:
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             workflowmetadata = str()
             promptstr = str()
-            imgexif = img.getexif() #get the (empty) Exif data of the generated Picture
-            
 
             if prompt is not None:
                 promptstr="".join(json.dumps(prompt)) #prepare prompt String
-                imgexif[0x010f] ="Prompt:"+ promptstr #Add PromptString to EXIF position 0x010f (Exif.Image.Make)
             if extra_pnginfo is not None:
                 for x in extra_pnginfo:
                     workflowmetadata += "".join(json.dumps(extra_pnginfo[x]))
-            imgexif[0x010e] = "Workflow:"+ workflowmetadata #Add Workflowstring to EXIF position 0x010e (Exif.Image.ImageDescription)
-            file = f"{filename}_{counter:05}_.webp"
-            if mode =="lossless":
-                boolloss = True
-            if mode =="lossy":
-                boolloss = False
-            
+            file = f"{filename}_{counter:05}_.{format}"
 
-            img.save(os.path.join(full_output_folder, file), method=6 , exif= imgexif, lossless=boolloss , quality=compression) #Save as webp - options to be determined
+            exif_bytes = piexif.dump({
+                "0th": {
+                    piexif.ImageIFD.Make: promptstr,
+                    piexif.ImageIFD.ImageDescription: workflowmetadata
+                },
+                "Exif": {
+                    piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img) or "", encoding="unicode")
+                }
+            })
+
+            img.save(os.path.join(full_output_folder, file), method=6, exif=exif_bytes, lossless=(mode =="lossless"), quality=compression)
+
+            # webp format saving
+            #if format == 'webp':
+                #if mode =="lossless":
+                #    boolloss = True
+                #if mode =="lossy":
+                #    boolloss = False
+                #img.save(os.path.join(full_output_folder, file), method=6, exif=exif_bytes, lossless=boolloss, quality=compression) #Save as webp - options to be determined
+            # jpg saving
+            #else:
+                #img.save(os.path.join(full_output_folder, file), exif=exif_bytes, quality=compression)
+
             results.append({
                 "filename": file,
                 "subfolder": subfolder,
@@ -96,6 +117,7 @@ class Save_as_webp:
             counter += 1
 
         return { "ui": { "images": results } }
+
 NODE_CLASS_MAPPINGS = {
-    "Save_as_webp": Save_as_webp
+    "SaveImgAdv": SaveImgAdv
 }
