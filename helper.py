@@ -33,11 +33,13 @@ sampler_props_map = {
     'seed': 'Seed',
     'denoise': 'Denoising strength',
     # handled by convSamplerA1111()
-    'sampler': None,
+    'sampler_name': None,
     'scheduler': None }
+
 def isSamplerNode(params):
     for param in sampler_props_map:
-        if param not in params: return False
+        if param not in params:
+            return False
     return True
 
 def convSamplerA1111(sampler, scheduler):
@@ -46,7 +48,7 @@ def convSamplerA1111(sampler, scheduler):
     scheduler = scheduler.title()
     return sampler+' '+scheduler
 
-def automatic1111Format(prompt, image):
+def automatic1111Format(prompt, image, add_hashes):
     positive_input = ''
     negative_input = ''
     gensampler = ''
@@ -70,8 +72,9 @@ def automatic1111Format(prompt, image):
                 if 'lora_name' in params and params['lora_name'] != None:
                     loras.append({ "name": stripFileExtension(params['lora_name']), "weight_clip": params['strength_clip'], "weight_model": params['strength_model'] })
                     # calculate the sha256sum for this lora. TODO: store hashes in .txt file next to loras
-                    hash = sha256sum(folder_names_and_paths['loras'][0][0]+'/'+params['lora_name'])
-                    hashes[f'lora:{params["lora_name"]}'] = hash[0:10]
+                    if add_hashes:
+                        hash = sha256sum(folder_names_and_paths['loras'][0][0]+'/'+params['lora_name'])
+                        hashes[f'lora:{params["lora_name"]}'] = hash[0:10]
             if isSamplerNode(params) and gensampler == '':
                 sampler = convSamplerA1111(params['sampler_name'], params['scheduler'])
                 width, height = image.size
@@ -89,8 +92,9 @@ def automatic1111Format(prompt, image):
                 # first found model gets selected as creator
                 if genmodel == '': genmodel = f', Model: {model}'
                 # calculate the sha256sum for this model. TODO: store hashes in .txt file next to models
-                hash = sha256sum(folder_names_and_paths['checkpoints'][0][0]+'/'+params['ckpt_name'])
-                hashes[f'model:{model}'] = hash[0:10]
+                if add_hashes:
+                    hash = sha256sum(folder_names_and_paths['checkpoints'][0][0]+'/'+params['ckpt_name'])
+                    hashes[f'model:{model}'] = hash[0:10]
             if prompt[order]['class_type'] == 'UpscaleModelLoader' and hires == '':
                 model = stripFileExtension(params['model_name'])
                 hires = f', Hires upscaler: {model}'
@@ -102,5 +106,5 @@ def automatic1111Format(prompt, image):
     lora_prompt_add = ''
     if len(loras) > 0:
         lora_prompt_add = ', <lora:'+'>, <lora:'.join(f'{l["name"]}:{l["weight_clip"]}' for l in loras)+'>'
-    uc = positive_input + lora_prompt_add + negative_input + gensampler + genmodel + controlnet + hires + ultimate_sd_upscale + ', Hashes: ' + json.dumps(hashes)
+    uc = positive_input + lora_prompt_add + negative_input + gensampler + genmodel + controlnet + hires + ultimate_sd_upscale + (', Hashes: ' + json.dumps(hashes) if add_hashes else '')
     return uc

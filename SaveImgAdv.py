@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 import piexif
 import piexif.helper
 from . import helper
@@ -9,7 +10,7 @@ import json
 
 # by Kaharos94 and jkrauss82
 # forked from Kaharos94 / https://github.com/Kaharos94/ComfyUI-Saveaswebp
-# comfyUI node to save an image in webp and jpeg formats
+# comfyUI node to save an image in webp, jpeg and png formats
 
 class SaveImgAdv:
     def __init__(self):
@@ -22,12 +23,15 @@ class SaveImgAdv:
             "required": {
                 "images": ("IMAGE", ),
                 "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                "mode":(["lossy","lossless"],),
-                "format":([ "jpg", "webp" ], { "default": "webp" }),
-                "compression":("INT", {"default": 80, "min": 1, "max": 100, "step": 1},)
+                "mode": (["lossy", "lossless"],),
+                "format": ([ "webp", "jpg", "png" ], { "default": "webp" }),
+                "compression": ("INT", {"default": 90, "min": 1, "max": 100, "step": 1},),
+                "calc_model_hashes": ([ "off", "on" ], { "default": "off" }),
+                "add_automatic1111_meta": ([ "off", "on" ], { "default": "off" }),
             },
             "hidden": {
-                "prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO"
             }
         }
 
@@ -38,7 +42,8 @@ class SaveImgAdv:
 
     CATEGORY = "image"
 
-    def Save_as_format(self, mode, format, compression, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, ):
+    def Save_as_format(self, mode, format, compression, images, calc_model_hashes, add_automatic1111_meta, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, ):
+
         def map_filename(filename):
             prefix_len = len(os.path.basename(filename_prefix))
             prefix = filename[:prefix_len + 1]
@@ -64,6 +69,11 @@ class SaveImgAdv:
             print("Saving image outside the output folder is not allowed.")
             return {}
 
+        # sanitize mode option
+        if format == 'jpg': mode = 'lossy'
+        elif format == 'png': mode = 'lossless'
+
+        # TODO: get rid of the trailing underscore
         try:
             counter = max(filter(lambda a: a[1][:-1] == filename and a[1][-1] == "_", map(map_filename, os.listdir(full_output_folder))))[0] + 1
         except ValueError:
@@ -73,41 +83,50 @@ class SaveImgAdv:
             counter = 1
 
         results = list()
+
         for image in images:
             i = 255. * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            workflowmetadata = str()
-            promptstr = str()
 
-            if prompt is not None:
-                promptstr="".join(json.dumps(prompt)) #prepare prompt String
-            if extra_pnginfo is not None:
-                for x in extra_pnginfo:
-                    workflowmetadata += "".join(json.dumps(extra_pnginfo[x]))
             file = f"{filename}_{counter:05}_.{format}"
 
-            exif_bytes = piexif.dump({
-                "0th": {
-                    piexif.ImageIFD.Make: promptstr,
-                    piexif.ImageIFD.ImageDescription: workflowmetadata
-                },
-                "Exif": {
-                    piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img) or "", encoding="unicode")
-                }
-            })
+            # format webp or jpg
+            if format != 'png':
+                workflowmetadata = str()
+                promptstr = str()
 
-            img.save(os.path.join(full_output_folder, file), method=6, exif=exif_bytes, lossless=(mode =="lossless"), quality=compression)
+                if prompt is not None:
+                    promptstr="".join(json.dumps(prompt)) #prepare prompt String
+                if extra_pnginfo is not None:
+                    for x in extra_pnginfo:
+                        workflowmetadata += "".join(json.dumps(extra_pnginfo[x]))
 
-            # webp format saving
-            #if format == 'webp':
-                #if mode =="lossless":
-                #    boolloss = True
-                #if mode =="lossy":
-                #    boolloss = False
-                #img.save(os.path.join(full_output_folder, file), method=6, exif=exif_bytes, lossless=boolloss, quality=compression) #Save as webp - options to be determined
-            # jpg saving
-            #else:
-                #img.save(os.path.join(full_output_folder, file), exif=exif_bytes, quality=compression)
+                exifdict = {
+                        "0th": {
+                            piexif.ImageIFD.Make: promptstr,
+                            piexif.ImageIFD.ImageDescription: workflowmetadata
+                        }
+                    }
+                if add_automatic1111_meta == 'on':
+                    exifdict['Exif'] = {
+                            piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes == 'on') or "", encoding="unicode")
+                        }
+
+                exif_bytes = piexif.dump(exifdict)
+
+                img.save(os.path.join(full_output_folder, file), method=6, exif=exif_bytes, lossless=(mode =="lossless"), quality=compression)
+
+            # format png (method from ComfyUI SaveImage class)
+            else:
+                metadata = None
+                metadata = PngInfo()
+                if prompt is not None:
+                    metadata.add_text("prompt", json.dumps(prompt))
+                if extra_pnginfo is not None:
+                    for x in extra_pnginfo:
+                        metadata.add_text(x, json.dumps(extra_pnginfo[x]))
+
+                img.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4)
 
             results.append({
                 "filename": file,
