@@ -33,20 +33,67 @@ sampler_props_map = {
     'seed': 'Seed',
     'denoise': 'Denoising strength',
     # handled by convSamplerA1111()
-    'sampler': None,
+    'sampler_name': None,
     'scheduler': None }
+
 def isSamplerNode(params):
     for param in sampler_props_map:
-        if param not in params: return False
+        if param not in params:
+            return False
     return True
 
 def convSamplerA1111(sampler, scheduler):
-    sampler = sampler.replace('dpm', 'DPM').replace('pp', '++').replace('_ancestral', ' a').replace('DPM_2', 'DPM2').replace('_sde', ' SDE').replace('2m', '2M').replace('2s', '2S').replace('euler', 'Euler').replace('ddim', 'DDIM').replace('heun', 'Heun').replace('uni_pc', 'UniPC').replace('_', ' ')
+    sampler = sampler.replace('dpm', 'DPM').replace('pp', '++').replace('_ancestral', ' a').replace('DPM_2', 'DPM2').replace('_sde', ' SDE').replace('2m', '2M').replace('3m', '3M').replace('2s', '2S').replace('euler', 'Euler').replace('ddim', 'DDIM').replace('heun', 'Heun').replace('uni_pc', 'UniPC').replace('_', ' ')
     if scheduler == 'normal': return sampler
     scheduler = scheduler.title()
     return sampler+' '+scheduler
 
-def automatic1111Format(prompt, image):
+def traverseOrGetText(order, prompt):
+    # print(f'check node {order[0]} input {order[1]}')
+    text = []
+    if order[0] in prompt:
+        node = prompt[order[0]]
+        # print(f': {type(list(node.values())[int(order[1])])}')
+        if 'inputs' in node:
+            # node which has some sort of text input - either as a text field or coming from yet another node
+            if 'text' in node['inputs']:
+                if isinstance(node['inputs']['text'], str):
+                    return node['inputs']['text']
+                else:
+                    # check if is find/replace node
+                    if 'find' in node['inputs'] and 'replace' in node['inputs']:
+                        find_node = prompt[node['inputs']['find'][0]]
+                        # print(f'find node {json.dumps(find_node)}')
+                        find = ''
+                        if 'inputs' in find_node:
+                            find = list(find_node['inputs'].values())[node['inputs']['find'][1]]
+                            # print(f'find {json.dumps(find)}')
+                            if not isinstance(find, str):
+                                # print('traversing find dict')
+                                find = traverseOrGetText(node['inputs']['find'], prompt)
+                        replace_node = prompt[node['inputs']['replace'][0]]
+                        # print(f'repl node {json.dumps(replace_node)}')
+                        replace = ''
+                        if 'inputs' in replace_node:
+                            replace = list(replace_node['inputs'].values())[node['inputs']['replace'][1]]
+                            # print(f'replace {json.dumps(replace)}')
+                            if not isinstance(replace, str):
+                                # print('traversing replace dict')
+                                replace = traverseOrGetText(node['inputs']['replace'], prompt)
+                        # print('traversing text replace dict')
+                        return traverseOrGetText(node['inputs']['text'], prompt).replace(find, replace)
+                    else:
+                        # print('traversing text dict')
+                        return traverseOrGetText(node['inputs']['text'], prompt)
+            # we most likely have a node which handles some properties of condition, let's see how many there are and traverse back each of them
+            for prop in node['inputs']:
+                if prop.find('conditioning') == 0:
+                    text.append(traverseOrGetText(node['inputs'][prop], prompt))
+
+    return ' '.join(text)
+
+
+def automatic1111Format(prompt, image, add_hashes):
     positive_input = ''
     negative_input = ''
     gensampler = ''
@@ -57,21 +104,36 @@ def automatic1111Format(prompt, image):
     hashes = {}
     loras = []
 
+    # print(json.dumps(prompt, indent=4))
+
     for order in prompt:
         params = None
         if 'inputs' in prompt[order]:
             params = prompt[order]['inputs']
         if params != None and 'class_type' in prompt[order]:
-            if prompt[order]['class_type'] == 'CLIPTextEncode':
-                if 'text' in params and params['text'] != None:
-                    if positive_input == '': positive_input = params['text']
-                    elif negative_input == '': negative_input = '\nNegative prompt: '+params['text']
+            if 'positive' in params:
+                if positive_input == '':
+                    # print('positive...')
+                    positive_input = traverseOrGetText(params['positive'], prompt)
+                    # print(f'found pos: {positive_input}')
+            if 'negative' in params:
+                if negative_input == '':
+                    # print('negative...')
+                    negative_input = '\nNegative prompt: ' + traverseOrGetText(params['negative'], prompt)
+                    # print(f'found neg: {negative_input}')
+
+            # if prompt[order]['class_type'] == 'CLIPTextEncode':
+            #     # TODO: replace this functionality with looking for the first sampler node and traversing through its positive and negative condition inputs to find correct strings
+            #     if 'text' in params and params['text'] != None and isinstance(params['text'], str):
+            #         if positive_input == '': positive_input = params['text']
+            #         elif negative_input == '': negative_input = '\nNegative prompt: '+params['text']
             if prompt[order]['class_type'] == 'LoraLoader':
                 if 'lora_name' in params and params['lora_name'] != None:
                     loras.append({ "name": stripFileExtension(params['lora_name']), "weight_clip": params['strength_clip'], "weight_model": params['strength_model'] })
                     # calculate the sha256sum for this lora. TODO: store hashes in .txt file next to loras
-                    hash = sha256sum(folder_names_and_paths['loras'][0][0]+'/'+params['lora_name'])
-                    hashes[f'lora:{params["lora_name"]}'] = hash[0:10]
+                    if add_hashes:
+                        hash = sha256sum(folder_names_and_paths['loras'][0][0]+'/'+params['lora_name'])
+                        hashes[f'lora:{params["lora_name"]}'] = hash[0:10]
             if isSamplerNode(params) and gensampler == '':
                 sampler = convSamplerA1111(params['sampler_name'], params['scheduler'])
                 width, height = image.size
@@ -89,8 +151,9 @@ def automatic1111Format(prompt, image):
                 # first found model gets selected as creator
                 if genmodel == '': genmodel = f', Model: {model}'
                 # calculate the sha256sum for this model. TODO: store hashes in .txt file next to models
-                hash = sha256sum(folder_names_and_paths['checkpoints'][0][0]+'/'+params['ckpt_name'])
-                hashes[f'model:{model}'] = hash[0:10]
+                if add_hashes:
+                    hash = sha256sum(folder_names_and_paths['checkpoints'][0][0]+'/'+params['ckpt_name'])
+                    hashes[f'model:{model}'] = hash[0:10]
             if prompt[order]['class_type'] == 'UpscaleModelLoader' and hires == '':
                 model = stripFileExtension(params['model_name'])
                 hires = f', Hires upscaler: {model}'
@@ -102,5 +165,5 @@ def automatic1111Format(prompt, image):
     lora_prompt_add = ''
     if len(loras) > 0:
         lora_prompt_add = ', <lora:'+'>, <lora:'.join(f'{l["name"]}:{l["weight_clip"]}' for l in loras)+'>'
-    uc = positive_input + lora_prompt_add + negative_input + gensampler + genmodel + controlnet + hires + ultimate_sd_upscale + ', Hashes: ' + json.dumps(hashes)
+    uc = positive_input + lora_prompt_add + negative_input + gensampler + genmodel + controlnet + hires + ultimate_sd_upscale + (', Hashes: ' + json.dumps(hashes) if add_hashes else '')
     return uc
