@@ -92,7 +92,6 @@ def traverseOrGetText(order, prompt):
 
     return ' '.join(text)
 
-
 def automatic1111Format(prompt, image, add_hashes):
     positive_input = ''
     negative_input = ''
