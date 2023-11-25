@@ -26,8 +26,8 @@ class SaveImgAdv:
                 "mode": (["lossy", "lossless"],),
                 "format": ([ "webp", "jpg", "png" ], { "default": "webp" }),
                 "compression": ("INT", {"default": 90, "min": 1, "max": 100, "step": 1},),
-                "calc_model_hashes": ([ "off", "on" ], { "default": "off" }),
-                "add_automatic1111_meta": ([ "off", "on" ], { "default": "off" }),
+                "calc_model_hashes": ("BOOLEAN", {"default": False}),
+                "add_automatic1111_meta": ("BOOLEAN", {"default": False}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -107,9 +107,9 @@ class SaveImgAdv:
                             piexif.ImageIFD.ImageDescription: workflowmetadata
                         }
                     }
-                if add_automatic1111_meta == 'on':
+                if add_automatic1111_meta:
                     exifdict['Exif'] = {
-                            piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes == 'on') or "", encoding="unicode")
+                            piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes) or "", encoding="unicode")
                         }
 
                 exif_bytes = piexif.dump(exifdict)
