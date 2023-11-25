@@ -29,6 +29,9 @@ class SaveImgAdv:
                 "calc_model_hashes": ("BOOLEAN", {"default": False}),
                 "add_automatic1111_meta": ("BOOLEAN", {"default": False}),
             },
+            "optional": {
+                "keywords": ("STRING", { "forceInput": True }),
+            },
             "hidden": {
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO"
@@ -42,7 +45,7 @@ class SaveImgAdv:
 
     CATEGORY = "image"
 
-    def Save_as_format(self, mode, format, compression, images, calc_model_hashes, add_automatic1111_meta, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, ):
+    def Save_as_format(self, mode, format, compression, images, calc_model_hashes, add_automatic1111_meta, filename_prefix="ComfyUI", keywords=None, prompt=None, extra_pnginfo=None, ):
 
         def map_filename(filename):
             prefix_len = len(os.path.basename(filename_prefix))
@@ -111,6 +114,14 @@ class SaveImgAdv:
                     exifdict['Exif'] = {
                             piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes) or "", encoding="unicode")
                         }
+
+                if keywords != None and isinstance(keywords, str):
+                    # keywords maxlength in iptc standard 64 characters
+                    klist = keywords.split(",")
+                    final_list = []
+                    for word in klist:
+                        if len(word) < 65: final_list.append(word.strip())
+                    exifdict["0th"][piexif.ImageIFD.XPKeywords] = ", ".join(final_list).encode("utf-16le")
 
                 exif_bytes = piexif.dump(exifdict)
 
