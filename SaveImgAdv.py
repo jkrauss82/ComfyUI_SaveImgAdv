@@ -28,9 +28,7 @@ class SaveImgAdv:
                 "compression": ("INT", {"default": 90, "min": 1, "max": 100, "step": 1},),
                 "calc_model_hashes": ("BOOLEAN", {"default": False}),
                 "add_automatic1111_meta": ("BOOLEAN", {"default": False}),
-            },
-            "optional": {
-                "keywords": ("STRING", { "forceInput": True }),
+                "keywords": ("STRING", { "placeholder": "List of keywords to be added as exif tag, separated by commas" }),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -115,7 +113,7 @@ class SaveImgAdv:
                             piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes) or "", encoding="unicode")
                         }
 
-                if keywords != None and isinstance(keywords, str):
+                if keywords != None and isinstance(keywords, str) and keywords != '':
                     # keywords maxlength in iptc standard 64 characters
                     klist = keywords.split(",")
                     final_list = []
