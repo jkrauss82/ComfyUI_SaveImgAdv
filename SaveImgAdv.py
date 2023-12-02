@@ -28,12 +28,15 @@ class SaveImgAdv:
                 "compression": ("INT", {"default": 90, "min": 1, "max": 100, "step": 1},),
                 "calc_model_hashes": ("BOOLEAN", {"default": False}),
                 "add_automatic1111_meta": ("BOOLEAN", {"default": False}),
+                "keywords": ("STRING", { "placeholder": "List of keywords to be added as exif tag, separated by commas" }),
             },
             "hidden": {
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO"
             }
         }
+
+    INPUT_IS_LIST = True
 
     RETURN_TYPES = ()
     FUNCTION = "Save_as_format"
@@ -42,7 +45,20 @@ class SaveImgAdv:
 
     CATEGORY = "image"
 
-    def Save_as_format(self, mode, format, compression, images, calc_model_hashes, add_automatic1111_meta, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None, ):
+
+    def Save_as_format(self, mode, format, compression, images, calc_model_hashes, add_automatic1111_meta, filename_prefix="ComfyUI",
+                       keywords=None, prompt=None, extra_pnginfo=None, ):
+
+        # we have set INPUT_IS_LIST = True, need to map regular parameters from their lists
+        images = images[0]
+        mode = mode[0]
+        format = format[0]
+        compression = compression[0]
+        calc_model_hashes = calc_model_hashes[0]
+        add_automatic1111_meta = add_automatic1111_meta[0]
+        filename_prefix = filename_prefix[0]
+        prompt = prompt[0]
+        extra_pnginfo = extra_pnginfo[0]
 
         def map_filename(filename):
             prefix_len = len(os.path.basename(filename_prefix))
@@ -57,6 +73,8 @@ class SaveImgAdv:
             input = input.replace("%width%", str(images[0].shape[1]))
             input = input.replace("%height%", str(images[0].shape[0]))
             return input
+
+        results = list()
 
         filename_prefix = compute_vars(filename_prefix)
 
@@ -82,10 +100,8 @@ class SaveImgAdv:
             os.makedirs(full_output_folder, exist_ok=True)
             counter = 1
 
-        results = list()
-
-        for image in images:
-            i = 255. * image.cpu().numpy()
+        for idx in range(len(images)):
+            i = 255. * images[idx].cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
             file = f"{filename}_{counter:05}_.{format}"
@@ -111,6 +127,15 @@ class SaveImgAdv:
                     exifdict['Exif'] = {
                             piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(helper.automatic1111Format(prompt, img, calc_model_hashes) or "", encoding="unicode")
                         }
+
+                kidx = idx if keywords != None and len(keywords) > 1 else 0
+                if keywords[kidx] != None and isinstance(keywords[kidx], str) and keywords[kidx] != '':
+                    # keywords maxlength in iptc standard 64 characters
+                    klist = keywords[kidx].split(",")
+                    final_list = []
+                    for word in klist:
+                        if len(word) < 65: final_list.append(word.strip())
+                    exifdict["0th"][piexif.ImageIFD.XPKeywords] = ", ".join(final_list).encode("utf-16le")
 
                 exif_bytes = piexif.dump(exifdict)
 
