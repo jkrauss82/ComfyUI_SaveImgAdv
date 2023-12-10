@@ -90,7 +90,7 @@ def traverseOrGetText(order, prompt):
                 if prop.find('conditioning') == 0:
                     text.append(traverseOrGetText(node['inputs'][prop], prompt))
 
-    return ' '.join(text)
+    return ' '.join(list(set(text)))
 
 def automatic1111Format(prompt, image, add_hashes):
     positive_input = ''
