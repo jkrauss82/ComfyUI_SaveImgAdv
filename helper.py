@@ -164,11 +164,12 @@ def automatic1111Format(prompt, image, add_hashes):
     prompt_parts = (positive_input + negative_input).split(',')
     for part in prompt_parts:
         if part.strip().startswith('embedding:'):
-            result = re.search(r'embedding:([^\s,]+)[,\s]*$', part)
-            embedding = result.group(1)
-            if add_hashes:
-                hash = sha256sum(folder_names_and_paths['embeddings'][0][0]+'/'+embedding)
-                hashes[f'embed:{embedding}'] = hash[0:10]
+            result = re.search(r'embedding:([^\s]+)\b', part)
+            if result:
+                embedding = result.group(1)
+                if add_hashes:
+                    hash = sha256sum(folder_names_and_paths['embeddings'][0][0]+'/'+embedding)
+                    hashes[f'embed:{embedding}'] = hash[0:10]
     # add lora prompt part just like in a1111
     lora_prompt_add = ''
     if len(loras) > 0:
