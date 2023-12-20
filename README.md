@@ -10,13 +10,13 @@ Basic support of automatic1111 compatible prompt embedding and [CivitAI](https:/
 
 EXIF keywords can be stored in image meta data (goes nice with [WD14 tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)).
 
-## Description 📔:
+## Description 📔
 
 This adds a custom node to save a picture as png, webp or jpeg file and also adds a script to Comfy to drag and drop generated images into the UI to load the workflow.
 
 PNG images saved by default from the node shipped with ComfyUI are lossless, thus occupy more space compared to lossy formats.
 
-### Options ⚙️:
+### Options ⚙️
   - **Filename prefix**: just the same as in the original Save Image node of ComfyUI. **Supports creation of subfolders by adding slashes**
   - **Format**: png / webp / jpeg
   - **Compression**: used to set the quality for webp/jpeg, does nothing for png
@@ -33,7 +33,7 @@ On default it's set to lossy with a compression of 90.
 
 The workflow JSON is embedded in the EXIF metadata of the images, sections ImageIFD/Make for prompt and ImageIFD/ImageDescription for workflow meta. Automatic1111 prompt info is added at field ExifIFD/UserComment.
 
-## Installation 🖥️:
+## Installation 🖥️
 
 In your terminal/console, navigate to your ComfyUI custom nodes directory and clone this repo:
 
@@ -49,7 +49,7 @@ Activate your python virtual environment and install the requirements (piexif):
 
 Restart ComfyUI.
 
-## Warning ⚠️:
+## Warning ⚠️
 
 Hobby project, if you encounter bugs or problems feel free to create an issue, but not guarantee that it will be taken care of right away or ever.
 
@@ -57,7 +57,7 @@ Prompt compatibility with automatic1111 is basic and hacky and will surely break
 
 CivitAI model hashes require the SHA256sum of the models used in the workflow which takes a while to calculate on the first execution. Hashes are cached in a simple JSON file.
 
-### Known issues 🚧:
+### Known issues 🚧
 
 Import of Webpfiles breaks if import a workflow that has }Prompt:{ in a Node that has dynamic wildcards disabled.
 
