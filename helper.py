@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from pathlib import Path
 from folder_paths import folder_names_and_paths, models_dir
 
@@ -90,7 +91,12 @@ def traverseOrGetText(order, prompt):
                 if prop.find('conditioning') == 0:
                     text.append(traverseOrGetText(node['inputs'][prop], prompt))
 
-    return ' '.join(list(set(text)))
+    retVal = []
+    for txts in text:
+        parts = txts.split(',')
+        for txt in parts:
+            if not txt.strip(' ') in retVal: retVal.append(txt.strip(' '))
+    return ', '.join(retVal)
 
 def automatic1111Format(prompt, image, add_hashes):
     positive_input = ''
@@ -120,12 +126,6 @@ def automatic1111Format(prompt, image, add_hashes):
                     # print('negative...')
                     negative_input = '\nNegative prompt: ' + traverseOrGetText(params['negative'], prompt)
                     # print(f'found neg: {negative_input}')
-
-            # if prompt[order]['class_type'] == 'CLIPTextEncode':
-            #     # TODO: replace this functionality with looking for the first sampler node and traversing through its positive and negative condition inputs to find correct strings
-            #     if 'text' in params and params['text'] != None and isinstance(params['text'], str):
-            #         if positive_input == '': positive_input = params['text']
-            #         elif negative_input == '': negative_input = '\nNegative prompt: '+params['text']
             if prompt[order]['class_type'] == 'LoraLoader':
                 if 'lora_name' in params and params['lora_name'] != None:
                     loras.append({ "name": stripFileExtension(params['lora_name']), "weight_clip": params['strength_clip'], "weight_model": params['strength_model'] })
@@ -160,7 +160,16 @@ def automatic1111Format(prompt, image, add_hashes):
                 if 'control_net' in params and params['control_net'] != None and params['control_net'][0] in prompt and prompt[params['control_net'][0]]['class_type'] == 'ControlNetLoader':
                     model = stripFileExtension(prompt[params['control_net'][0]]['inputs']['control_net_name'])
                     controlnet = f', ControlNet: "model: {model}, weight: {params["strength"]}"'
-
+    # find embeddings
+    prompt_parts = (positive_input + negative_input).split(',')
+    for part in prompt_parts:
+        if part.strip().startswith('embedding:'):
+            result = re.search(r'embedding:([^\s,]+)[,\s]*$', part)
+            embedding = result.group(1)
+            if add_hashes:
+                hash = sha256sum(folder_names_and_paths['embeddings'][0][0]+'/'+embedding)
+                hashes[f'embed:{embedding}'] = hash[0:10]
+    # add lora prompt part just like in a1111
     lora_prompt_add = ''
     if len(loras) > 0:
         lora_prompt_add = ', <lora:'+'>, <lora:'.join(f'{l["name"]}:{l["weight_clip"]}' for l in loras)+'>'
