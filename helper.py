@@ -173,6 +173,6 @@ def automatic1111Format(prompt, image, add_hashes):
     # add lora prompt part just like in a1111
     lora_prompt_add = ''
     if len(loras) > 0:
-        lora_prompt_add = ', <lora:'+'>, <lora:'.join(f'{l["name"]}:{l["weight_clip"]}' for l in loras)+'>'
+        lora_prompt_add = ', <lora:'+'>, <lora:'.join(f'{l["name"]}:{l["weight_model"]}' for l in loras)+'>'
     uc = positive_input + lora_prompt_add + negative_input + gensampler + genmodel + controlnet + hires + ultimate_sd_upscale + (', Hashes: ' + json.dumps(hashes) if add_hashes else '')
     return uc
