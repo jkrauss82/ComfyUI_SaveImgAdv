@@ -9,19 +9,8 @@ import folder_paths
 import os
 import json
 from comfy.sd1_clip import escape_important, unescape_important, token_weights
-import torchvision.transforms as transforms
 import torch
 
-# pd.set_option("display.max_column", None)
-# pd.set_option("display.max_colwidth", 200)
-# pd.set_option('display.width', None)
-# pd.set_option('display.max_rows', None)
-
-# Define a transform to convert PIL
-# image to a Torch tensor
-transform = transforms.Compose([
-    transforms.PILToTensor()
-])
 
 class CLIPTextEncodeWithStats:
     def __init__(self):
@@ -89,9 +78,8 @@ class CLIPTextEncodeWithStats:
             dfdict['num_words'].append(sum(dfdict['num_words']))
             dfdict['text'].append(text if len(text) < 90 else str(text[:42]+" (..) "+text[-42:]))
 
-        print(json.dumps(stats, indent=4))
         dfstr = pd.DataFrame.from_dict(dfdict).set_index('batch').to_string()
-        print(dfstr)
+        # print(dfstr)
         lines = len(dfstr.splitlines())
 
         fnt = ImageFont.truetype("custom_nodes/ComfyUI_SaveImgAdv/font/RobotoMono.ttf", 14)
@@ -107,10 +95,7 @@ class CLIPTextEncodeWithStats:
             fnt
         )
 
-        # transform = transforms.PILToTensor()
         # Convert the PIL image to Torch tensor
-        # img_tensor = transform(out)
-        # img_tensor = torch.from_numpy(np.array(out))
         img_tensor = np.array(out).astype(np.float32) / 255.0
         img_tensor = torch.from_numpy(img_tensor)[None,]
 
@@ -230,7 +215,6 @@ class SaveImgAdv:
             counter = 1
 
         for idx in range(len(images)):
-            print(images[idx])
             i = 255. * images[idx].cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
