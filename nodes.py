@@ -37,11 +37,9 @@ class CLIPTextEncodeWithStats:
 
     def encode(self, clip, text):
         tokens = clip.tokenize(text, return_word_ids=True)
-        print(f'org tokens {tokens}')
         words = self.getWords(text)
         stats = {}
         for clipn in tokens:
-            print(f'clip name {clipn}')
             clip_name = f'clip_{clipn}'
             if not clip_name in stats: stats[clip_name] = { 'num_batches': len(tokens[clipn]), 'num_tokens': 0, 'batches': [] }
             for batch in tokens[clipn]:
@@ -84,7 +82,7 @@ class CLIPTextEncodeWithStats:
 
         fnt = ImageFont.truetype("custom_nodes/ComfyUI_SaveImgAdv/font/RobotoMono.ttf", 14)
 
-        out = Image.new("RGB", (1024, 20 * lines), (50, 50, 50))
+        out = Image.new("RGB", (1024, 20 * lines), (60, 60, 60))
 
         ImageDraw.Draw(
             out  # Image
@@ -103,19 +101,16 @@ class CLIPTextEncodeWithStats:
         return ([[cond, {"pooled_output": pooled}]], json.dumps(stats, indent=3), img_tensor, )
 
 
+    # replicates some functionality of SDTokenizer.tokenize_with_weights to extract the prompt words
     def getWords(self, text):
         words = []
         text = escape_important(text)
         parsed_weights = token_weights(text, 1.0)
         for weighted_segment, weight in parsed_weights:
-            print(f'weighted_segment [{weighted_segment}] weight [{weight}]')
             to_tokenize = unescape_important(weighted_segment).replace("\n", " ").split(' ')
             to_tokenize = [x for x in to_tokenize if x != ""]
-            print(f'len words {len(to_tokenize)}', to_tokenize)
             for word in to_tokenize:
-                #if we find an embedding, deal with the embedding
-                if word.startswith(self.embedding_identifier):
-                    print(f'emdding {word}')
+                # TODO: what about embeddings?
                 words.append(word)
 
         return words
