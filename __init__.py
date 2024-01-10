@@ -17,19 +17,22 @@ class colors:
 comfy_path = os.path.dirname(folder_paths.__file__)
 
 def setup_js():
-  jknodes_path = os.path.dirname(__file__)
-  js_dest_path = os.path.join(comfy_path, "web", "extensions", "jknodes")
-  js_files = ["jknodes.js", "exif-reader.js"]
+    jknodes_path = os.path.dirname(__file__)
+    js_dest_path = os.path.join(comfy_path, "web", "extensions", "jknodes")
+    js_files = ["jknodes.js", "exif-reader.js"]
 
-  ## Creating folder if it's not present, then Copy.
-  if not os.path.isdir(js_dest_path):
-    os.mkdir(js_dest_path)
-  for js in js_files:
-    if not os.path.isfile(f"{js_dest_path}/{js}"):
-      print(f"{colors.BLUE}jkNodes:{colors.ENDC} Copying JS files")
-      shutil.copy(os.path.join(jknodes_path, "js", js), js_dest_path)
+    ## Creating folder if it's not present, then Copy.
+    if not os.path.isdir(js_dest_path):
+        os.mkdir(js_dest_path)
+    logged = False
+    for js in js_files:
+        if not os.path.isfile(f"{js_dest_path}/{js}"):
+            if logged == False:
+                print(f"{colors.BLUE}jkNodes:{colors.ENDC} Copying JS files")
+                logged = True
+        shutil.copy(os.path.join(jknodes_path, "js", js), js_dest_path)
 
-  print(f"{colors.BLUE}jkNodes: {colors.GREEN}Loaded{colors.ENDC}")
+    print(f"{colors.BLUE}jkNodes: {colors.GREEN}Loaded{colors.ENDC}")
 
 setup_js()
 
