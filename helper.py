@@ -54,7 +54,7 @@ def convSamplerA1111(sampler, scheduler):
 def traverseOrGetText(order, prompt):
     # print(f'check node {order[0]} input {order[1]}')
     text = []
-    if order[0] in prompt:
+    if isinstance(order, list) and order[0] in prompt:
         node = prompt[order[0]]
         # print(f': {type(list(node.values())[int(order[1])])}')
         if 'inputs' in node:
