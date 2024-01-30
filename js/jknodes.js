@@ -48,28 +48,27 @@ app.registerExtension({
 		app.handleFile = async function(file) { // Add the 'file' parameter to the function definition
 			// TODO: use ExifReader for webp as well
 			if (file.type === "image/webp") {
-				const webpInfo = await getImgExifData(file);
+				const webpInfo = await getImgExifData(file)
 				if (webpInfo) {
 					if (webpInfo.workflow) {
-						if(app.load_workflow_with_components) {
-							app.load_workflow_with_components(webpInfo.workflow);
-						}
-						else
-							this.loadGraphData(JSON.parse(webpInfo.workflow));
+						this.loadGraphData(JSON.parse(webpInfo.workflow))
+					} else if (webpInfo.prompt) {
+						this.loadApiJson(JSON.parse(webpInfo.prompt))
 					}
 				}
 			}
 			else if (file.type === "image/jpeg") {
 				const tags = await ExifReader.load(file);
 				// read workflow from ImageDescription
-				if (tags && tags['ImageDescription']) {
+				if (tags) {
 					try {
-						const workflow = JSON.parse(tags['ImageDescription'].description)
-						if(app.load_workflow_with_components) {
-							app.load_workflow_with_components(workflow);
+						if (tags['ImageDescription'] && tags['ImageDescription'].description) {
+							const workflow = JSON.parse(tags['ImageDescription'].description)
+							this.loadGraphData(workflow)
+						} else if (tags['Make'] && tags['Make'].description) {
+							const prompt = JSON.parse(tags['Make'].description)
+							this.loadApiJson(prompt)
 						}
-						else
-							this.loadGraphData(workflow);
 					} catch (err) {
 						console.warn('Error getting workflow from image', tags['ImageDescription'])
 						return handleFile.apply(this, arguments);

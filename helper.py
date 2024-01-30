@@ -39,6 +39,8 @@ sampler_props_map = {
 
 def isSamplerNode(params):
     for param in sampler_props_map:
+        if param == 'denoise': continue # denoise not present in adv ksampler
+        if param == 'seed' and 'noise_seed' in params: continue # adv ksampler uses noise_seed
         if param not in params:
             return False
     return True
@@ -52,7 +54,7 @@ def convSamplerA1111(sampler, scheduler):
 def traverseOrGetText(order, prompt):
     # print(f'check node {order[0]} input {order[1]}')
     text = []
-    if order[0] in prompt:
+    if isinstance(order, list) and order[0] in prompt:
         node = prompt[order[0]]
         # print(f': {type(list(node.values())[int(order[1])])}')
         if 'inputs' in node:
@@ -136,7 +138,10 @@ def automatic1111Format(prompt, image, add_hashes):
             if isSamplerNode(params) and gensampler == '':
                 sampler = convSamplerA1111(params['sampler_name'], params['scheduler'])
                 width, height = image.size
-                gensampler = f'\nSteps: {params["steps"]}, Sampler: {sampler}, CFG scale: {params["cfg"]}, Seed: {params["seed"]}, Denoising strength: {params["denoise"]}, Size: {width}x{height}'
+                steps = params["end_at_step"] - params["start_at_step"] if "end_at_step" in params else params["steps"] if "steps" in "params" else None
+                seed = params["seed"] if "seed" in params else params["noise_seed"] if "noise_seed" in params else None
+                denoise = params["denoise"] if "denoise" in params else steps / params["steps"] if "start_at_step" in params else None
+                gensampler = f'\nSteps: {steps}, Sampler: {sampler}, CFG scale: {params["cfg"]}, Seed: {seed}, Denoising strength: {denoise}, Size: {width}x{height}'
             if prompt[order]['class_type'] == 'UltimateSDUpscale' and ultimate_sd_upscale == '':
                 if 'upscale_model' in params and params['upscale_model'] != None and params['upscale_model'][0] in prompt and prompt[params['upscale_model'][0]]['class_type'] == 'UpscaleModelLoader':
                     model = stripFileExtension(prompt[params['upscale_model'][0]]['inputs']['model_name'])
