@@ -1,3 +1,4 @@
+from nodes import CLIPTextEncodeWithStats, SaveImgAdv
 import shutil
 import folder_paths
 import os
@@ -16,22 +17,31 @@ class colors:
 comfy_path = os.path.dirname(folder_paths.__file__)
 
 def setup_js():
-  imgadv_path = os.path.dirname(__file__)
-  js_dest_path = os.path.join(comfy_path, "web", "extensions", "imginfo")
-  js_files = ["imginfo.js", "exif-reader.js"]
+    ultools_path = os.path.dirname(__file__)
+    js_dest_path = os.path.join(comfy_path, "web", "extensions", "ultools")
+    legacy_js_dest_path = os.path.join(comfy_path, "web", "extensions", "imginfo")
+    js_files = ["ultools.js", "exif-reader.js"]
 
-  ## Creating folder if it's not present, then Copy.
-  if not os.path.isdir(js_dest_path):
-    os.mkdir(js_dest_path)
-  for js in js_files:
-    if not os.path.isfile(f"{js_dest_path}/{js}"):
-      print(f"{colors.BLUE}SaveImgAdv:{colors.ENDC} Copying JS files for Workflow loading")
-      shutil.copy(os.path.join(imgadv_path, "imginfo", js), js_dest_path)
+    # check presence of legacy folder, print hint it can be removed
+    if os.path.isdir(legacy_js_dest_path):
+        print(f"{colors.BLUE}ULTools: {colors.WARNING}Found legacy SaveImgAdv path at {legacy_js_dest_path}, this folder and its content can be removed.{colors.ENDC}")
 
-  print(f"{colors.BLUE}SaveImgAdv: {colors.GREEN}Loaded{colors.ENDC}")
+    ## Creating folder if it's not present, then Copy.
+    if not os.path.isdir(js_dest_path):
+        os.mkdir(js_dest_path)
+    logged = False
+    for js in js_files:
+        if not os.path.isfile(f"{js_dest_path}/{js}"):
+            if logged == False:
+                print(f"{colors.BLUE}ULTools:{colors.ENDC} Copying JS files")
+                logged = True
+        shutil.copy(os.path.join(ultools_path, "js", js), js_dest_path)
+
+    print(f"{colors.BLUE}ULTools: {colors.GREEN}Loaded{colors.ENDC}")
 
 setup_js()
 
-from .SaveImgAdv import NODE_CLASS_MAPPINGS
-
-__all__ = ['NODE_CLASS_MAPPINGS']
+NODE_CLASS_MAPPINGS = {
+    "SaveImgAdv": SaveImgAdv,
+    "CLIPTextEncodeWithStats": CLIPTextEncodeWithStats
+}

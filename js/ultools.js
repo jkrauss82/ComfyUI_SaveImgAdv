@@ -1,49 +1,45 @@
-import { app } from "/scripts/app.js";
-import './exif-reader.js';
+import { app } from "/scripts/app.js"
+import './exif-reader.js'
 
 app.registerExtension({
 
-	name: "saveimgadv",
+	name: "ulTools",
 
-	setup(app,file) {
-
+	setup(app) {
 		async function getImgExifData(webpFile) {
-			const reader = new FileReader();
-			reader.readAsArrayBuffer(webpFile);
+			const reader = new FileReader()
+			reader.readAsArrayBuffer(webpFile)
 
 			return new Promise((resolve, reject) => {
 				reader.onloadend = function() {
-					const buffer = reader.result;
-					const view = new DataView(buffer);
-					let offset = 0;
+					const buffer = reader.result
+					const view = new DataView(buffer)
+					let offset = 0
 
 					// Search for the "EXIF" tag
 					while (offset < view.byteLength - 4) {
 						if (view.getUint32(offset, true) === 0x46495845 /* "EXIF" in big-endian */) {
-							const exifOffset = offset + 6;
-							const exifData = buffer.slice(exifOffset);
-							const exifString = new TextDecoder().decode(exifData).replaceAll(String.fromCharCode(0), ''); //Remove Null Terminators from string
-							let exifJsonString = exifString.slice(exifString.indexOf("Workflow")); //find beginning of Workflow Exif Tag
-							let promptregex="(?<!\{)}Prompt:{(?![\w\s]*[\}])"; //Regex to split }Prompt:{ // Hacky as fuck - theoretically if somebody has a text encode with dynamic prompts turned off, they could enter }Prompt:{ which breaks this
+							const exifOffset = offset + 6
+							const exifData = buffer.slice(exifOffset)
+							const exifString = new TextDecoder().decode(exifData).replaceAll(String.fromCharCode(0), '') //Remove Null Terminators from string
+							let exifJsonString = exifString.slice(exifString.indexOf("Workflow")) //find beginning of Workflow Exif Tag
+							let promptregex = "(?<!\{)}Prompt:{(?![\w\s]*[\}])" //Regex to split }Prompt:{ // Hacky as fuck - theoretically if somebody has a text encode with dynamic prompts turned off, they could enter }Prompt:{ which breaks this
 							let exifJsonStringMap = new Map([
+								["workflow",exifJsonString.slice(9,exifJsonString.search(promptregex)+1)], // Remove "Workflow:" keyword in front of the JSON workflow data passed
+								["prompt",exifJsonString.substring((exifJsonString.search(promptregex)+8))] //Find and remove "Prompt:" keyword in front of the JSON prompt data
+							])
+							let fullJson = Object.fromEntries(exifJsonStringMap) //object to pass back
 
-							["workflow",exifJsonString.slice(9,exifJsonString.search(promptregex)+1)], // Remove "Workflow:" keyword in front of the JSON workflow data passed
-							["prompt",exifJsonString.substring((exifJsonString.search(promptregex)+8))] //Find and remove "Prompt:" keyword in front of the JSON prompt data
-
-							]);
-							let fullJson=Object.fromEntries(exifJsonStringMap); //object to pass back
-
-							resolve(fullJson);
+							resolve(fullJson)
 						}
 
-						offset++;
+						offset++
 					}
 
-					reject(new Error('EXIF metadata not found'));
+					reject(new Error('EXIF metadata not found'))
 				}
 			})
-		};
-
+		}
 
 		const handleFile = app.handleFile;
 
@@ -60,7 +56,7 @@ app.registerExtension({
 				}
 			}
 			else if (file.type === "image/jpeg") {
-				const tags = await ExifReader.load(file);
+				const tags = await ExifReader.load(file)
 				// read workflow from ImageDescription
 				if (tags) {
 					try {
@@ -73,12 +69,12 @@ app.registerExtension({
 						}
 					} catch (err) {
 						console.warn('Error getting workflow from image', tags['ImageDescription'])
-						return handleFile.apply(this, arguments);
+						return handleFile.apply(this, arguments)
 					}
 				}
 			}
 			else {
-				return handleFile.apply(this, arguments);
+				return handleFile.apply(this, arguments)
 			}
 		}
 	}

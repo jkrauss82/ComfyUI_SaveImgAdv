@@ -2,16 +2,17 @@ import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import piexif
-import piexif.helper
-from . import helper
+import helper
 import folder_paths
 import os
 import json
 
-# by Kaharos94 and jkrauss82
-# forked from Kaharos94 / https://github.com/Kaharos94/ComfyUI-Saveaswebp
-# comfyUI node to save an image in webp, jpeg and png formats
 
+'''
+by Kaharos94 and jkrauss82
+forked from Kaharos94 / https://github.com/Kaharos94/ComfyUI-Saveaswebp
+comfyUI node to save an image in webp, jpeg and png formats
+'''
 class SaveImgAdv:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -58,7 +59,7 @@ class SaveImgAdv:
         add_automatic1111_meta = add_automatic1111_meta[0]
         filename_prefix = filename_prefix[0]
         prompt = prompt[0]
-        extra_pnginfo = extra_pnginfo[0]
+        extra_pnginfo = extra_pnginfo[0] if extra_pnginfo is not None else None
 
         def map_filename(filename):
             prefix_len = len(os.path.basename(filename_prefix))
@@ -161,7 +162,3 @@ class SaveImgAdv:
             counter += 1
 
         return { "ui": { "images": results } }
-
-NODE_CLASS_MAPPINGS = {
-    "SaveImgAdv": SaveImgAdv
-}
