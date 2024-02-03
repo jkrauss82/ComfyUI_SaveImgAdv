@@ -1,7 +1,7 @@
+from nodes import CLIPTextEncodeWithStats, SaveImgAdv
 import shutil
 import folder_paths
 import os
-from .nodes import SaveImgAdv, CLIPTextEncodeWithStats
 
 class colors:
     HEADER = '\033[95m'
@@ -17,9 +17,14 @@ class colors:
 comfy_path = os.path.dirname(folder_paths.__file__)
 
 def setup_js():
-    jknodes_path = os.path.dirname(__file__)
-    js_dest_path = os.path.join(comfy_path, "web", "extensions", "jknodes")
-    js_files = ["jknodes.js", "exif-reader.js"]
+    ultools_path = os.path.dirname(__file__)
+    js_dest_path = os.path.join(comfy_path, "web", "extensions", "ultools")
+    legacy_js_dest_path = os.path.join(comfy_path, "web", "extensions", "imginfo")
+    js_files = ["ultools.js", "exif-reader.js"]
+
+    # check presence of legacy folder, print hint it can be removed
+    if os.path.isdir(legacy_js_dest_path):
+        print(f"{colors.BLUE}ULTools: {colors.WARNING}Found legacy SaveImgAdv path at {legacy_js_dest_path}, this folder and its content can be removed.{colors.ENDC}")
 
     ## Creating folder if it's not present, then Copy.
     if not os.path.isdir(js_dest_path):
@@ -28,11 +33,11 @@ def setup_js():
     for js in js_files:
         if not os.path.isfile(f"{js_dest_path}/{js}"):
             if logged == False:
-                print(f"{colors.BLUE}jkNodes:{colors.ENDC} Copying JS files")
+                print(f"{colors.BLUE}ULTools:{colors.ENDC} Copying JS files")
                 logged = True
-        shutil.copy(os.path.join(jknodes_path, "js", js), js_dest_path)
+        shutil.copy(os.path.join(ultools_path, "js", js), js_dest_path)
 
-    print(f"{colors.BLUE}jkNodes: {colors.GREEN}Loaded{colors.ENDC}")
+    print(f"{colors.BLUE}ULTools: {colors.GREEN}Loaded{colors.ENDC}")
 
 setup_js()
 
