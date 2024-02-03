@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import piexif
+import piexif.helper
 from . import helper
 import folder_paths
 import os
