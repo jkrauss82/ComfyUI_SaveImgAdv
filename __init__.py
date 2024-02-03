@@ -1,4 +1,4 @@
-from nodes import CLIPTextEncodeWithStats, SaveImgAdv
+from .nodes import CLIPTextEncodeWithStats, SaveImgAdv
 import shutil
 import folder_paths
 import os
