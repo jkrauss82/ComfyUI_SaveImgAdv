@@ -1,3 +1,9 @@
+# +++ ARCHIVE NOTE +++
+
+**Due to the project getting larger and developing into a collection of nodes it does not make sense to maintain the forked status. Thus this is being archived as of 2024-02-24.**
+
+**Development continues at [ULTools](https://github.com/jkrauss82/ultools-comfyui)**
+
 # ComfyUI-SaveImgAdv 🖼️
 
 *Forked from Kaharos94 / https://github.com/Kaharos94/ComfyUI-Saveaswebp*
